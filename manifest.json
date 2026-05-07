@@ -1,0 +1,17 @@
+{
+  "name": "First Salary Guide",
+  "short_name": "Salary Guide",
+  "description": "AI-powered first salary planning tool for young professionals in India.",
+  "start_url": "/?pwa=true",
+  "display": "standalone",
+  "background_color": "#e8f4f8",
+  "theme_color": "#0d7377",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>First Salary Guide - Understand Your Paycheck</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d7377" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <base target="_blank">
+</head>
+<body>
+
+  <canvas id="confettiCanvas"></canvas>
+  <canvas id="particlesCanvas"></canvas>
+
+  <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()">
+    <i class="fas fa-moon"></i>
+    <i class="fas fa-sun"></i>
+  </button>
+
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <div class="container">
+    <!-- STEP 1: Landing -->
+    <div class="card step-card active" id="step1">
+      <div class="landing-layout">
+        <div class="landing-left">
+          <div class="hero-icon">💰</div>
+          <h1>First Salary Guide</h1>
+          <p class="subtitle">Decode your paycheck. Build your plan. Start confident. No embarrassment, no jargon — just clarity in one session.</p>
+
+          <div class="trust-badges">
+            <span class="badge"><i class="fas fa-shield-alt"></i> No investment advice</span>
+            <span class="badge"><i class="fas fa-ban"></i> No product ads</span>
+            <span class="badge"><i class="fas fa-bolt"></i> One session only</span>
+          </div>
+        </div>
+
+        <div class="landing-right">
+          <div class="input-group">
+            <label for="ctc">Annual CTC (Package)</label>
+            <div class="input-wrapper">
+              <span class="currency">₹</span>
+              <input type="number" id="ctc" placeholder="Example: 500000" />
+            </div>
+            <p class="hint">Your total yearly package before deductions</p>
+          </div>
+
+          <div class="divider">or skip to</div>
+
+          <div class="input-group">
+            <label for="salary">Monthly In-Hand Salary</label>
+            <div class="input-wrapper">
+              <span class="currency">₹</span>
+              <input type="number" id="salary" placeholder="Example: 35000" />
+            </div>
+            <p class="hint">What actually lands in your bank account</p>
+          </div>
+
+          <button class="primary-btn" onclick="goToStep2()">
+            <span>Understand My Salary</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Payslip Explainer -->
+    <div class="card step-card" id="step2">
+      <div class="step-badge">STEP 1 of 4</div>
+      <h2>Your Salary Breakdown</h2>
+      <p class="subtitle">Here's what happens between your package and your pocket</p>
+
+      <div class="deductions-layout">
+        <div class="salary-summary">
+          <div class="summary-row">
+            <span class="label">Annual CTC</span>
+            <span class="value" id="ctcDisplay">₹0</span>
+          </div>
+          <div class="summary-row highlight">
+            <span class="label">Monthly In-Hand</span>
+            <span class="value" id="inhandDisplay">₹0</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="deductions-grid" id="deductionsGrid">
+            <!-- Filled by JS -->
+          </div>
+          <div class="info-box">
+            <i class="fas fa-lightbulb"></i>
+            <p><strong>Why this matters:</strong> Your CTC includes money you never see (employer PF, gratuity). Your in-hand is what you actually budget with. Always plan with in-hand, not CTC.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+        <button class="ghost-btn" onclick="showStep(1)">
+          <i class="fas fa-arrow-left"></i>
+          <span>Back</span>
+        </button>
+        <button class="primary-btn" onclick="goToStep3()" style="max-width: 400px;">
+          <span>Build My Budget Plan</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Allocation Planner -->
+    <div class="card step-card" id="step3">
+      <div class="step-badge">STEP 2 of 4</div>
+      <h2>Your Money Plan</h2>
+      <p class="subtitle">Adjust the sliders to match your life. We'll do the math.</p>
+
+      <div class="allocation-layout">
+        <div class="chart-section">
+          <div class="chart-container">
+            <canvas id="allocationChart"></canvas>
+            <div class="chart-center">
+              <span class="chart-amount" id="chartAmount">₹0</span>
+              <span class="chart-label">per month</span>
+            </div>
+          </div>
+          <div class="smart-tip" id="smartTip">
+            <i class="fas fa-star"></i>
+            <span id="tipText">Loading tip...</span>
+          </div>
+        </div>
+
+        <div class="allocation-sliders">
+          <div class="slider-group">
+            <div class="slider-header">
+              <div class="slider-label">
+                <span class="dot needs-dot"></span>
+                <span>Needs</span>
+                <span class="slider-percent" id="needsPercent">50%</span>
+              </div>
+              <span class="slider-amount" id="needsAmount">₹0</span>
+            </div>
+            <input type="range" id="needsSlider" min="30" max="70" value="50" class="slider needs-slider" oninput="updateAllocation()">
+            <p class="slider-desc">Rent, groceries, transport, utilities, phone bill</p>
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <div class="slider-label">
+                <span class="dot wants-dot"></span>
+                <span>Wants</span>
+                <span class="slider-percent" id="wantsPercent">30%</span>
+              </div>
+              <span class="slider-amount" id="wantsAmount">₹0</span>
+            </div>
+            <input type="range" id="wantsSlider" min="10" max="50" value="30" class="slider wants-slider" oninput="updateAllocation()">
+            <p class="slider-desc">Dining out, Netflix, shopping, hobbies, travel</p>
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <div class="slider-label">
+                <span class="dot savings-dot"></span>
+                <span>Savings</span>
+                <span class="slider-percent" id="savingsPercent">20%</span>
+              </div>
+              <span class="slider-amount" id="savingsAmount">₹0</span>
+            </div>
+            <input type="range" id="savingsSlider" min="10" max="40" value="20" class="slider savings-slider" oninput="updateAllocation()">
+            <p class="slider-desc">Emergency fund, future goals, peace of mind</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 15px; justify-content: center; margin-top: 32px;">
+        <button class="ghost-btn" onclick="showStep(2)">
+          <i class="fas fa-arrow-left"></i>
+          <span>Back</span>
+        </button>
+        <button class="primary-btn" onclick="goToStep4()" style="max-width: 400px;">
+          <span>See My 6-Month Journey</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 4: 6-Month Simulator -->
+    <div class="card step-card" id="step4">
+      <div class="step-badge">STEP 3 of 4</div>
+      <h2>Your First 6 Months</h2>
+      <p class="subtitle">What your plan looks like in real life. Month by month.</p>
+
+      <div class="simulator-header">
+        <div class="sim-summary">
+          <span class="sim-label">Monthly Savings</span>
+          <span class="sim-value" id="simSavings">₹0</span>
+        </div>
+        <div class="sim-summary">
+          <span class="sim-label">6-Month Total</span>
+          <span class="sim-value accent" id="simTotal">₹0</span>
+        </div>
+        <div class="sim-summary">
+          <span class="sim-label">Emergency Fund</span>
+          <span class="sim-value" id="simEmergency">0 months</span>
+        </div>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline-month">
+          <div class="timeline-marker active">
+            <span class="month-num">1</span>
+          </div>
+          <div class="timeline-content">
+            <h4>🎯 The Setup Month</h4>
+            <ul class="timeline-list">
+              <li>Open a separate savings account (keeps temptation away)</li>
+              <li>Set up auto-transfer of <strong id="month1Transfer">₹0</strong> on salary day</li>
+              <li>Build your first <strong id="month1Buffer">₹0</strong> emergency buffer</li>
+              <li>Download your bank app and enable notifications</li>
+            </ul>
+            <div class="milestone">
+              <i class="fas fa-flag"></i>
+              <span>End of Month 1: You have <strong id="month1Total">₹0</strong> saved</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-month">
+          <div class="timeline-marker">
+            <span class="month-num">2</span>
+          </div>
+          <div class="timeline-content">
+            <h4>🔄 The Habit Month</h4>
+            <ul class="timeline-list">
+              <li>First full month of automatic saving — no willpower needed</li>
+              <li>Track one week of spending to spot "money leaks"</li>
+              <li>Resist: New phone on EMI, expensive subscription upgrades</li>
+            </ul>
+            <div class="milestone">
+              <i class="fas fa-flag"></i>
+              <span>End of Month 2: You have <strong id="month2Total">₹0</strong> saved</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-month">
+          <div class="timeline-marker">
+            <span class="month-num">3</span>
+          </div>
+          <div class="timeline-content">
+            <h4>💪 The Confidence Month</h4>
+            <ul class="timeline-list">
+              <li>You now have <strong id="month3Total">₹0</strong> — that's <span id="month3Weeks"></span> weeks of rent covered!</li>
+              <li>Review: Are you sticking to your 50/30/20 plan?</li>
+              <li>Goal: Build a 1-month emergency fund by now</li>
+            </ul>
+            <div class="milestone highlight">
+              <i class="fas fa-trophy"></i>
+              <span>🏆 Milestone: 1-Month Emergency Fund Complete!</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-month">
+          <div class="timeline-marker">
+            <span class="month-num">4</span>
+          </div>
+          <div class="timeline-content">
+            <h4>📈 The Growth Month</h4>
+            <ul class="timeline-list">
+              <li>With <strong id="month4Total">₹0</strong> saved, you can breathe easier</li>
+              <li>Consider: Small online course to boost your skills (₹2,000-5,000)</li>
+              <li>Watch out for: Festival spending, peer pressure to "upgrade" lifestyle</li>
+            </ul>
+            <div class="milestone">
+              <i class="fas fa-flag"></i>
+              <span>End of Month 4: <strong id="month4Total2">₹0</strong> in your safety net</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-month">
+          <div class="timeline-marker">
+            <span class="month-num">5</span>
+          </div>
+          <div class="timeline-content">
+            <h4>🛡️ The Security Month</h4>
+            <ul class="timeline-list">
+              <li><strong id="month5Total">₹0</strong> saved — enough for a minor medical emergency</li>
+              <li>Check if your company provides health insurance (most do!)</li>
+              <li>Start thinking: What's my next money goal after 6 months?</li>
+            </ul>
+            <div class="milestone">
+              <i class="fas fa-flag"></i>
+              <span>End of Month 5: <strong id="month5Total2">₹0</strong> and growing</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-month">
+          <div class="timeline-marker final">
+            <span class="month-num">6</span>
+          </div>
+          <div class="timeline-content">
+            <h4>🎓 The Graduate Month</h4>
+            <ul class="timeline-list">
+              <li>Congratulations! You have <strong id="month6Total">₹0</strong> saved</li>
+              <li>That's a <strong id="month6Months"></strong>-month emergency fund!</li>
+              <li>You've built the most important habit: paying yourself first</li>
+              <li>Next: Keep this going, and you'll have serious money in 2 years</li>
+            </ul>
+            <div class="milestone highlight gold">
+              <i class="fas fa-crown"></i>
+              <span>👑 You did it! 6 months of disciplined saving. You're no longer a beginner.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Goal Tracker -->
+      <div class="goal-tracker-section" style="margin-top: 40px; padding: 25px; background: rgba(255,255,255,0.05); border-radius: var(--radius-md); border: 1px solid var(--border);">
+        <h3><i class="fas fa-bullseye"></i> Goal Tracker</h3>
+        <p style="color: var(--text-light); margin-bottom: 20px;">What are you saving for? Set a goal and let's track it.</p>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+          <input type="text" id="goalName" placeholder="E.g., Emergency Fund, New Bike" style="flex: 1; min-width: 200px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text);">
+          <input type="number" id="goalAmount" placeholder="Target Amount (₹)" style="flex: 1; min-width: 150px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text);">
+          <button onclick="addGoal()" class="primary-btn" style="padding: 12px 24px; border-radius: var(--radius-sm);">Add Goal</button>
+        </div>
+        
+        <div id="goalsList" style="display: flex; flex-direction: column; gap: 15px;">
+          <!-- Goals will appear here -->
+        </div>
+      </div>
+
+      <div class="traps-section" style="margin-top: 40px;">
+        <h3><i class="fas fa-exclamation-triangle"></i> Common First-Salary Traps</h3>
+        <div class="trap-cards">
+          <div class="trap-card">
+            <div class="trap-icon">❌</div>
+            <div class="trap-content">
+              <h4>"I'll start saving next month"</h4>
+              <p>The most expensive lie you tell yourself. Month 1 sets the pattern.</p>
+            </div>
+            <div class="trap-fix">
+              <span class="fix-label">✅ Fix:</span>
+              <span>Auto-transfer on Day 1. Make it invisible.</span>
+            </div>
+          </div>
+          <div class="trap-card">
+            <div class="trap-icon">❌</div>
+            <div class="trap-content">
+              <h4>Buying everything on EMI</h4>
+              <p>That ₹30,000 phone becomes ₹35,000 with interest. And you're locked in.</p>
+            </div>
+            <div class="trap-fix">
+              <span class="fix-label">✅ Fix:</span>
+              <span>Save for 3 months, buy with cash. No interest, no stress.</span>
+            </div>
+          </div>
+          <div class="trap-card">
+            <div class="trap-icon">❌</div>
+            <div class="trap-content">
+              <h4>Ignoring health insurance</h4>
+              <p>One hospital visit can wipe out 6 months of savings. Check your company cover.</p>
+            </div>
+            <div class="trap-fix">
+              <span class="fix-label">✅ Fix:</span>
+              <span>Ask HR about your group health policy. Know what's covered.</span>
+            </div>
+          </div>
+          <div class="trap-card">
+            <div class="trap-icon">❌</div>
+            <div class="trap-content">
+              <h4>"My CTC is my real salary"</h4>
+              <p>Budgeting with ₹50,000 when you get ₹38,000 leads to month-end panic.</p>
+            </div>
+            <div class="trap-fix">
+              <span class="fix-label">✅ Fix:</span>
+              <span>Always budget with in-hand. CTC is just a number on paper.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+        <button class="ghost-btn" onclick="showStep(3)">
+          <i class="fas fa-arrow-left"></i>
+          <span>Back</span>
+        </button>
+        <button class="primary-btn" onclick="goToStep5()" style="max-width: 400px;">
+          <span>Get My Shareable Plan</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 5: Final Plan -->
+    <div class="card step-card" id="step5">
+      <div class="success-animation">
+        <div class="check-circle">
+          <i class="fas fa-check"></i>
+        </div>
+      </div>
+      <h2>Your First Salary Plan</h2>
+      <p class="subtitle">Personalized, simple, and yours to keep</p>
+      <p id="planCounter" style="display:none; text-align:center; font-size:13px; color:var(--primary); font-weight:600; margin-top:8px; padding:8px 16px; background:rgba(13,115,119,0.06); border-radius:20px; display:inline-block;"></p>
+
+      <!-- Health Score -->
+      <div class="health-score-section" id="healthScoreSection">
+        <div class="health-score-title">
+          <i class="fas fa-heartbeat"></i> Financial Health Score
+        </div>
+        <p class="health-score-subtitle">Based on your budget allocation and savings plan</p>
+        <div class="gauge-container">
+          <canvas id="gaugeCanvas" width="200" height="110"></canvas>
+          <div class="gauge-value" id="gaugeValue">0</div>
+        </div>
+        <p class="gauge-label" id="gaugeLabel">Calculating...</p>
+        <div class="health-tips" id="healthTips"></div>
+      </div>
+
+      <div class="plan-wrapper">
+        <div class="plan-card" id="planCard">
+          <div class="plan-header">
+            <div class="plan-logo">💰</div>
+            <div class="plan-title">
+              <h3>My First Salary Plan</h3>
+              <p id="planDate"></p>
+            </div>
+          </div>
+
+          <div class="plan-salary">
+            <span class="plan-label">Monthly In-Hand</span>
+            <span class="plan-value" id="planSalary">₹0</span>
+          </div>
+
+          <div class="plan-chart-container">
+            <canvas id="planChart"></canvas>
+          </div>
+
+          <div class="plan-breakdown">
+            <div class="plan-item">
+              <span class="plan-dot needs-dot"></span>
+              <div class="plan-item-info">
+                <span class="plan-item-label">Needs</span>
+                <span class="plan-item-desc" id="planNeedsDesc">Rent, food, transport</span>
+              </div>
+              <span class="plan-item-value" id="planNeeds">₹0</span>
+            </div>
+            <div class="plan-item">
+              <span class="plan-dot wants-dot"></span>
+              <div class="plan-item-info">
+                <span class="plan-item-label">Wants</span>
+                <span class="plan-item-desc" id="planWantsDesc">Entertainment, dining</span>
+              </div>
+              <span class="plan-item-value" id="planWants">₹0</span>
+            </div>
+            <div class="plan-item">
+              <span class="plan-dot savings-dot"></span>
+              <div class="plan-item-info">
+                <span class="plan-item-label">Savings</span>
+                <span class="plan-item-desc" id="planSavingsDesc">Emergency fund</span>
+              </div>
+              <span class="plan-item-value" id="planSavings">₹0</span>
+            </div>
+          </div>
+
+          <div class="plan-6month">
+            <div class="plan-6month-header">
+              <i class="fas fa-calendar-alt"></i>
+              <span>6-Month Projection</span>
+            </div>
+            <div class="plan-6month-grid">
+              <div class="plan-6month-item">
+                <span class="plan-6month-label">Total Saved</span>
+                <span class="plan-6month-value" id="plan6MonthTotal">₹0</span>
+              </div>
+              <div class="plan-6month-item">
+                <span class="plan-6month-label">Emergency Fund</span>
+                <span class="plan-6month-value" id="plan6MonthFund">0 months</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="plan-insight" id="planInsight">
+            <!-- Filled by JS -->
+          </div>
+
+          <div class="plan-footer">
+            <p>Generated by First Salary Guide</p>
+            <p class="plan-disclaimer">Educational only. Not financial advice.</p>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button class="primary-btn" onclick="downloadPlan()">
+            <i class="fas fa-file-pdf"></i>
+            <span>Download PDF Report</span>
+          </button>
+          <button class="secondary-btn" onclick="sharePlan()">
+            <i class="fas fa-share-alt"></i>
+            <span>Share Plan</span>
+          </button>
+          <button class="ghost-btn" onclick="showStep(4)">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back</span>
+          </button>
+          <button class="ghost-btn" onclick="resetApp()">
+            <i class="fas fa-redo"></i>
+            <span>Start Over</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Expense Tracker -->
+      <div class="expense-section">
+        <h3><i class="fas fa-receipt"></i> Expense Tracker</h3>
+        <p class="expense-subtitle">Log your daily expenses and see how you're doing against your budget</p>
+
+        <div class="expense-form">
+          <input type="text" id="expenseDesc" placeholder="What did you spend on?" />
+          <input type="number" id="expenseAmount" placeholder="₹ Amount" />
+          <select id="expenseCategory">
+            <option value="needs">Needs</option>
+            <option value="wants">Wants</option>
+            <option value="savings">Savings</option>
+          </select>
+          <button class="expense-add-btn" onclick="addExpense()"><i class="fas fa-plus"></i> Add</button>
+        </div>
+
+        <div class="expense-progress" id="expenseProgress"></div>
+        <div class="expense-list" id="expenseList">
+          <p class="no-expenses">No expenses logged yet. Start tracking!</p>
+        </div>
+      </div>
+    </div>
+
+      <!-- Growth Projection -->
+      <div class="growth-section">
+        <h3><i class="fas fa-chart-line"></i> Savings Growth Projection</h3>
+        <p class="growth-subtitle">See how your savings compound over time</p>
+        <div class="growth-chart-container">
+          <canvas id="growthChart"></canvas>
+        </div>
+        <div class="growth-stats" id="growthStats"></div>
+      </div>
+
+      <!-- Peer Comparison -->
+      <div class="peer-section" id="peerSection">
+        <div class="peer-title"><i class="fas fa-users"></i> How You Compare</div>
+        <div class="peer-bars" id="peerBars"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- AI Chatbot -->
+  <button class="chat-fab" id="chatFab" onclick="toggleChat()">
+    <i class="fas fa-robot" id="chatFabIcon"></i>
+  </button>
+
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-header">
+      <div class="chat-header-icon">🤖</div>
+      <div class="chat-header-info">
+        <h4>Money Mentor AI</h4>
+        <p>Your personal financial advisor</p>
+      </div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg bot">Hi! I'm your Money Mentor 🤖 I can help you with budgeting tips, saving strategies, and financial questions. Ask me anything!</div>
+    </div>
+    <div class="chat-suggestions" id="chatSuggestions">
+      <button class="chat-suggestion-btn" onclick="askSuggestion(this)">Am I saving enough?</button>
+      <button class="chat-suggestion-btn" onclick="askSuggestion(this)">Should I take EMI?</button>
+      <button class="chat-suggestion-btn" onclick="askSuggestion(this)">How to invest?</button>
+      <button class="chat-suggestion-btn" onclick="askSuggestion(this)">Emergency fund tips</button>
+    </div>
+    <div class="chat-input-area">
+      <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()" title="Voice input">
+        <i class="fas fa-microphone"></i>
+      </button>
+      <input type="text" id="chatInput" placeholder="Ask me anything..." onkeypress="if(event.key==='Enter')sendChat()" />
+      <button class="chat-send-btn" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+  <script src="script.js?v=9"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(reg => console.log('PWA Service Worker registered:', reg.scope))
+          .catch(err => console.log('PWA Service Worker registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "first-salary-guide",
+  "version": "1.0.0",
+  "description": "AI-powered first salary planning tool for young professionals in India",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["salary", "finance", "budgeting", "AI", "chatbot"],
+  "author": "Mallikarjun Gala",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5",
+    "uuid": "^10.0.0"
+  }
+}
