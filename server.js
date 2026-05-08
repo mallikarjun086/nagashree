@@ -220,8 +220,8 @@ app.post("/api/email-plan", async (req, res) => {
       return res.status(400).json({ error: "Email and PDF are required" });
     }
 
-    // Remove the data URI prefix if present
-    const base64Data = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
+    // Remove the data URI prefix (jsPDF may add filename=...)
+    const base64Data = pdfBase64.includes("base64,") ? pdfBase64.split("base64,")[1] : pdfBase64;
 
     const mailOptions = {
       from: process.env.EMAIL_USER || 'noreply@firstsalary.guide',
