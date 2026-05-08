@@ -1,4 +1,4 @@
-let state = { ctc: 0, inhand: 0, needs: 50, wants: 30, savings: 20, deductions: [] };
+let state = JSON.parse(localStorage.getItem("fsg_state")) || { ctc: 0, inhand: 0, needs: 50, wants: 30, savings: 20, deductions: [] };
 let allocationChart = null;
 let planChart = null;
 
@@ -173,6 +173,8 @@ function goToStep2() {
   state.totalDeductions = result.totalDeductions;
   state.taxData = result.taxData;
 
+  localStorage.setItem("fsg_state", JSON.stringify(state));
+
   renderDeductions();
   showStep(2);
 }
@@ -188,27 +190,9 @@ function renderDeductions() {
       <i class="fas fa-calculator"></i>
       <p>
         <strong>Before Deduction:</strong> ${formatCurrency(state.monthlyCTC)}/month<br>
-        <strong>Basic Salary:</strong> ${formatCurrency(state.basic)}/month<br>
         <strong>Total Deductions:</strong> ${formatCurrency(state.totalDeductions)}/month<br>
         <strong>After Deduction / In-hand:</strong> ${formatCurrency(state.inhand)}/month<br><br>
         <strong>Formula:</strong> Monthly CTC - Employee PF - Employer PF - Professional Tax - TDS = In-hand
-      </p>
-    </div>
-    
-    <div class="tax-comparison-box" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1)); padding: 20px; border-radius: var(--radius-sm); border: 1px solid rgba(59, 130, 246, 0.2); margin-top: -10px; margin-bottom: 10px;">
-      <h4 style="margin: 0 0 12px 0; font-size: 16px; color: var(--text);"><i class="fas fa-balance-scale"></i> FY 2024-25 Tax Regime Comparison</h4>
-      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 200px; padding: 12px; background: ${state.taxData.recommended === 'New Regime' ? 'rgba(16, 185, 129, 0.15)' : 'var(--card-bg)'}; border-radius: 8px; border: ${state.taxData.recommended === 'New Regime' ? '2px solid #10b981' : '1px solid var(--border)'};">
-          <div style="font-size: 13px; color: var(--text-light); font-weight: 600;">NEW REGIME (Default)</div>
-          <div style="font-size: 20px; font-weight: 800; color: ${state.taxData.recommended === 'New Regime' ? '#10b981' : 'var(--text)'};">₹${state.taxData.newTax.toLocaleString("en-IN")}/yr</div>
-        </div>
-        <div style="flex: 1; min-width: 200px; padding: 12px; background: ${state.taxData.recommended === 'Old Regime' ? 'rgba(16, 185, 129, 0.15)' : 'var(--card-bg)'}; border-radius: 8px; border: ${state.taxData.recommended === 'Old Regime' ? '2px solid #10b981' : '1px solid var(--border)'};">
-          <div style="font-size: 13px; color: var(--text-light); font-weight: 600;">OLD REGIME (with 80C)</div>
-          <div style="font-size: 20px; font-weight: 800; color: ${state.taxData.recommended === 'Old Regime' ? '#10b981' : 'var(--text)'};">₹${state.taxData.oldTax.toLocaleString("en-IN")}/yr</div>
-        </div>
-      </div>
-      <p style="margin: 12px 0 0 0; font-size: 13px; color: var(--text-light);">
-        We automatically applied the <strong>${state.taxData.recommended}</strong> to maximize your take-home salary.
       </p>
     </div>
   `;
@@ -276,6 +260,8 @@ function updateAllocation() {
   state.needs = needs;
   state.wants = wants;
   state.savings = savings;
+
+  localStorage.setItem("fsg_state", JSON.stringify(state));
 
   const needsAmount = state.inhand * needs / 100;
   const wantsAmount = state.inhand * wants / 100;
@@ -869,6 +855,21 @@ function addExpense() {
     return;
   }
 
+  if (state.inhand) {
+    let budgetRatio = 0;
+    if (category === "needs") budgetRatio = state.needs || 50;
+    if (category === "wants") budgetRatio = state.wants || 30;
+    if (category === "savings") budgetRatio = state.savings || 20;
+    
+    const budget = Math.round(state.inhand * budgetRatio / 100);
+    const currentlySpent = expenses.filter(e => e.category === category).reduce((s, e) => s + e.amount, 0);
+    
+    if (currentlySpent + amount > budget) {
+      alert(`❌ Transaction Declined: This expense of ${formatCurrency(amount)} pushes you over your ${budgetRatio}% budget limit for ${category.toUpperCase()}!`);
+      return;
+    }
+  }
+
   expenses.push({
     id: Date.now(),
     desc,
@@ -896,9 +897,9 @@ function deleteExpense(id) {
 function renderExpenseProgress() {
   if (!state.inhand) return;
 
-  const needsBudget = state.inhand * state.needs / 100;
-  const wantsBudget = state.inhand * state.wants / 100;
-  const savingsBudget = state.inhand * state.savings / 100;
+  const needsBudget = Math.max(Math.round(state.inhand * state.needs / 100), 1);
+  const wantsBudget = Math.max(Math.round(state.inhand * state.wants / 100), 1);
+  const savingsBudget = Math.max(Math.round(state.inhand * state.savings / 100), 1);
 
   const needsSpent = expenses.filter(e => e.category === "needs").reduce((s, e) => s + e.amount, 0);
   const wantsSpent = expenses.filter(e => e.category === "wants").reduce((s, e) => s + e.amount, 0);
@@ -912,7 +913,7 @@ function renderExpenseProgress() {
         <span class="expense-cat-amount">${formatCurrency(needsSpent)} / ${formatCurrency(needsBudget)}</span>
       </div>
       <div class="expense-bar">
-        <div class="expense-bar-fill needs ${needsSpent > needsBudget ? 'over' : ''}" style="width: ${Math.min(needsSpent / needsBudget * 100, 100)}%"></div>
+        <div class="expense-bar-fill needs ${needsSpent > needsBudget ? 'over' : ''}" style="width: ${Math.min((needsSpent / needsBudget) * 100, 100)}%"></div>
       </div>
     </div>
     <div class="expense-category">
@@ -921,7 +922,7 @@ function renderExpenseProgress() {
         <span class="expense-cat-amount">${formatCurrency(wantsSpent)} / ${formatCurrency(wantsBudget)}</span>
       </div>
       <div class="expense-bar">
-        <div class="expense-bar-fill wants ${wantsSpent > wantsBudget ? 'over' : ''}" style="width: ${Math.min(wantsSpent / wantsBudget * 100, 100)}%"></div>
+        <div class="expense-bar-fill wants ${wantsSpent > wantsBudget ? 'over' : ''}" style="width: ${Math.min((wantsSpent / wantsBudget) * 100, 100)}%"></div>
       </div>
     </div>
     <div class="expense-category">
@@ -930,7 +931,7 @@ function renderExpenseProgress() {
         <span class="expense-cat-amount">${formatCurrency(savingsSpent)} / ${formatCurrency(savingsBudget)}</span>
       </div>
       <div class="expense-bar">
-        <div class="expense-bar-fill savings ${savingsSpent > savingsBudget ? 'over' : ''}" style="width: ${Math.min(savingsSpent / savingsBudget * 100, 100)}%"></div>
+        <div class="expense-bar-fill savings ${savingsSpent > savingsBudget ? 'over' : ''}" style="width: ${Math.min((savingsSpent / savingsBudget) * 100, 100)}%"></div>
       </div>
     </div>
   `;
@@ -1165,10 +1166,6 @@ function renderPeerComparison() {
       </div>
       <span class="peer-bar-value">${avgSavings}%</span>
     </div>
-    <p style="margin-top: 12px; font-size: 14px; color: var(--text-light);">
-      <i class="fas fa-trophy" style="color: #f39c12;"></i>
-      <strong style="color: var(--text);">You save more than ${savingsPercentile}%</strong> of first-time earners in India!
-    </p>
   `;
 
   // Animate bars
@@ -1259,6 +1256,9 @@ goToStep5 = function() {
 
   // Render peer comparison
   setTimeout(() => renderPeerComparison(), 800);
+
+  // Update Expense Tracker bars with the current session's salary and budget split
+  setTimeout(() => renderExpenseProgress(), 800);
 
   // Animate key numbers
   setTimeout(() => {
