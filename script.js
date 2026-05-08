@@ -329,12 +329,11 @@ function goToStep5() {
     day: "numeric", month: "long", year: "numeric"
   });
 
-  // Set values
+  // Populate plan card values
   document.getElementById("planSalary").textContent = formatCurrency(state.inhand);
   document.getElementById("planNeeds").textContent = formatCurrency(needsAmount);
   document.getElementById("planWants").textContent = formatCurrency(wantsAmount);
   document.getElementById("planSavings").textContent = formatCurrency(monthlySavings);
-
   document.getElementById("planNeedsDesc").textContent = `${state.needs}% — Rent, food, transport`;
   document.getElementById("planWantsDesc").textContent = `${state.wants}% — Entertainment, dining`;
   document.getElementById("planSavingsDesc").textContent = `${state.savings}% — Emergency fund`;
@@ -344,41 +343,54 @@ function goToStep5() {
   const emergencyMonths = Math.round((monthlySavings * 6) / state.inhand * 10) / 10;
   document.getElementById("plan6MonthFund").textContent = emergencyMonths + " months";
 
-  // Insight
+  // Personalised insight
   const planInsight = document.getElementById("planInsight");
-  let insight = "";
   if (state.savings >= 20) {
-    insight = `<p><strong>Great job!</strong> Saving ${state.savings}% of your income puts you ahead of most first-time earners. Keep this discipline for 2 years and you'll have a solid financial foundation.</p>`;
+    planInsight.innerHTML = `<p><strong>Great job!</strong> Saving ${state.savings}% puts you ahead of most first-time earners. Keep this discipline for 2 years and you'll have a solid financial foundation.</p>`;
   } else if (state.savings >= 15) {
-    insight = `<p><strong>Good start!</strong> You're saving ${state.savings}%. Try to push it to 20% in the next few months for a stronger safety net.</p>`;
+    planInsight.innerHTML = `<p><strong>Good start!</strong> You're saving ${state.savings}%. Try to push it to 20% in the next few months for a stronger safety net.</p>`;
   } else {
-    insight = `<p><strong>Heads up:</strong> ${state.savings}% savings is a start, but consider reducing wants to boost your emergency fund faster. Even 2-3% more makes a big difference over 6 months.</p>`;
+    planInsight.innerHTML = `<p><strong>Heads up:</strong> ${state.savings}% savings is a start — consider cutting Wants slightly to build your emergency fund faster.</p>`;
   }
-  planInsight.innerHTML = insight;
 
-  // Create plan chart
+  // Doughnut chart
   const ctx = document.getElementById("planChart").getContext("2d");
   if (planChart) planChart.destroy();
-
   planChart = new Chart(ctx, {
     type: "doughnut",
     data: {
       labels: ["Needs", "Wants", "Savings"],
-      datasets: [{
-        data: [state.needs, state.wants, state.savings],
-        backgroundColor: ["#0d7377", "#f39c12", "#e74c3c"],
-        borderWidth: 0
-      }]
+      datasets: [{ data: [state.needs, state.wants, state.savings], backgroundColor: ["#0d7377", "#f39c12", "#e74c3c"], borderWidth: 0 }]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: "65%",
-      plugins: { legend: { display: false } }
-    }
+    options: { responsive: true, maintainAspectRatio: false, cutout: "65%", plugins: { legend: { display: false } } }
   });
 
+  // Navigate to Step 5
   showStep(5);
+
+  // Celebratory confetti
+  launchConfetti();
+
+  // Financial health gauge
+  const score = calculateHealthScore();
+  setTimeout(() => animateGauge(score), 500);
+
+  // Expense progress bars (uses current session state)
+  renderExpenseProgress();
+
+  // Growth chart and peer comparison
+  setTimeout(() => renderGrowthChart(), 600);
+  setTimeout(() => renderPeerComparison(), 800);
+
+  // Animate salary counter
+  setTimeout(() => {
+    const planSalary = document.getElementById("planSalary");
+    if (planSalary) animateCounter(planSalary, state.inhand, 1200);
+  }, 400);
+
+  // Sync with backend (silent — works offline too)
+  savePlanToServer();
+  fetchStats();
 }
 
 function downloadPlan() {
@@ -666,21 +678,7 @@ function animateGauge(targetScore) {
   document.getElementById("healthTips").innerHTML = tips.join("");
 }
 
-// ===== UPDATE goToStep5 to include new features =====
-const _originalGoToStep5 = goToStep5;
-goToStep5 = function() {
-  _originalGoToStep5();
 
-  // Launch confetti
-  launchConfetti();
-
-  // Calculate and animate health score
-  const score = calculateHealthScore();
-  setTimeout(() => animateGauge(score), 500);
-
-  // Render expense progress bars
-  renderExpenseProgress();
-};
 
 // ===== AI CHATBOT =====
 // API calls go through backend server for security
@@ -1246,32 +1244,7 @@ function animateCounter(element, target, duration = 1000) {
   requestAnimationFrame(update);
 }
 
-// ===== UPDATE goToStep5 to include growth chart + peer comparison + backend =====
-const _originalGoToStep5v2 = goToStep5;
-goToStep5 = function() {
-  _originalGoToStep5v2();
 
-  // Render growth projection chart
-  setTimeout(() => renderGrowthChart(), 600);
-
-  // Render peer comparison
-  setTimeout(() => renderPeerComparison(), 800);
-
-  // Update Expense Tracker bars with the current session's salary and budget split
-  setTimeout(() => renderExpenseProgress(), 800);
-
-  // Animate key numbers
-  setTimeout(() => {
-    const planSalary = document.getElementById("planSalary");
-    if (planSalary) animateCounter(planSalary, state.inhand, 1200);
-  }, 400);
-
-  // Save plan to backend
-  savePlanToServer();
-
-  // Fetch and display stats
-  fetchStats();
-};
 
 // ===== BACKEND INTEGRATION =====
 async function savePlanToServer() {
