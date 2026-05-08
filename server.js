@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 const nodemailer = require("nodemailer");
 
 const app = express();
-const PORT = 3456;
+const PORT = process.env.PORT || 3456;
 
 // ===== Config =====
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyBmXhNuXVi2mPVcDaiPV_0mWclEYwHEKoo";

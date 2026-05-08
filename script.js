@@ -1454,7 +1454,7 @@ async function sendEmailPlan() {
     doc.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     const pdfBase64 = doc.output('datauristring');
 
-    const response = await fetch("http://localhost:3456/api/email-plan", {
+    const response = await fetch("/api/email-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: emailInput, pdfBase64 })
