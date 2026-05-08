@@ -1396,3 +1396,85 @@ function startTour() {
 
 // Start tour on load
 document.addEventListener('DOMContentLoaded', startTour);
+
+// ===== EMAIL PDF FEATURE =====
+function showEmailModal() {
+  document.getElementById('emailModal').style.display = 'flex';
+  document.getElementById('emailStatus').style.display = 'none';
+}
+
+function closeEmailModal() {
+  document.getElementById('emailModal').style.display = 'none';
+}
+
+async function sendEmailPlan() {
+  const emailInput = document.getElementById('userEmail').value;
+  const statusEl = document.getElementById('emailStatus');
+  const loader = document.getElementById('emailLoader');
+  const btn = document.getElementById('sendEmailBtn');
+
+  if (!emailInput || !emailInput.includes('@')) {
+    statusEl.innerText = "Please enter a valid email.";
+    statusEl.style.color = "var(--error)";
+    statusEl.style.display = "block";
+    return;
+  }
+
+  statusEl.style.display = 'none';
+  loader.style.display = 'inline-block';
+  btn.disabled = true;
+
+  try {
+    // Generate PDF base64 using jsPDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ format: 'a4', unit: 'mm' });
+    
+    // We'll capture the plan card as an image for the email PDF
+    const planCard = document.getElementById("planCard");
+    const originalBorder = planCard.style.border;
+    const originalShadow = planCard.style.boxShadow;
+    const originalBg = planCard.style.background;
+    planCard.style.border = "none";
+    planCard.style.boxShadow = "none";
+    planCard.style.background = "#ffffff";
+    planCard.style.color = "#1e293b";
+
+    const canvas = await html2canvas(planCard, { scale: 2, useCORS: true });
+    
+    planCard.style.border = originalBorder;
+    planCard.style.boxShadow = originalShadow;
+    planCard.style.background = originalBg;
+    planCard.style.color = "";
+
+    const imgData = canvas.toDataURL("image/png");
+    const imgProps = doc.getImageProperties(imgData);
+    const pdfWidth = doc.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+    doc.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    const pdfBase64 = doc.output('datauristring');
+
+    const response = await fetch("http://localhost:3456/api/email-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: emailInput, pdfBase64 })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      statusEl.innerText = data.message || "Email sent successfully!";
+      statusEl.style.color = "var(--success)";
+      setTimeout(closeEmailModal, 2000);
+    } else {
+      throw new Error(data.error || "Failed to send email");
+    }
+  } catch (err) {
+    statusEl.innerText = err.message || "Something went wrong.";
+    statusEl.style.color = "var(--error)";
+  } finally {
+    statusEl.style.display = "block";
+    loader.style.display = 'none';
+    btn.disabled = false;
+  }
+}

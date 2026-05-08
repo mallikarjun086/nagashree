@@ -496,6 +496,10 @@
             <i class="fas fa-file-pdf"></i>
             <span>Download PDF Report</span>
           </button>
+          <button class="primary-btn" onclick="showEmailModal()" style="background: var(--accent); border-color: var(--accent);">
+            <i class="fas fa-envelope"></i>
+            <span>Email My Plan</span>
+          </button>
           <button class="secondary-btn" onclick="sharePlan()">
             <i class="fas fa-share-alt"></i>
             <span>Share Plan</span>
@@ -550,6 +554,20 @@
       </div>
 
     </div><!-- end #step5 -->
+
+  <!-- Email Modal -->
+  <div id="emailModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(5px);">
+    <div style="background:var(--bg); padding:30px; border-radius:var(--radius-lg); width:90%; max-width:400px; border:1px solid var(--border); text-align:center;">
+      <h3 style="margin-bottom:15px; color:var(--text);"><i class="fas fa-paper-plane" style="color:var(--accent);"></i> Email Your Plan</h3>
+      <p style="margin-bottom:20px; color:var(--text-light); font-size:14px;">Enter your email to receive a high-quality PDF report of your First Salary Plan.</p>
+      <input type="email" id="userEmail" placeholder="your@email.com" style="width:100%; padding:12px; margin-bottom:20px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg-alt); color:var(--text);" />
+      <div style="display:flex; gap:10px;">
+        <button onclick="closeEmailModal()" class="ghost-btn" style="flex:1;">Cancel</button>
+        <button onclick="sendEmailPlan()" id="sendEmailBtn" class="primary-btn" style="flex:1;">Send <i class="fas fa-spinner fa-spin" id="emailLoader" style="display:none;"></i></button>
+      </div>
+      <p id="emailStatus" style="margin-top:15px; font-size:13px; display:none;"></p>
+    </div>
+  </div>
 
   <!-- AI Chatbot -->
   <button class="chat-fab" id="chatFab" onclick="toggleChat()">

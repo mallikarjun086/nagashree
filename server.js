@@ -1,31 +1,52 @@
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
-const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
+const mongoose = require("mongoose");
+const nodemailer = require("nodemailer");
 
 const app = express();
 const PORT = 3456;
 
 // ===== Config =====
-const GEMINI_API_KEY = "AIzaSyBmXhNuXVi2mPVcDaiPV_0mWclEYwHEKoo";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyBmXhNuXVi2mPVcDaiPV_0mWclEYwHEKoo";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
-const DATA_DIR = path.join(__dirname, "data");
-const PLANS_FILE = path.join(DATA_DIR, "plans.json");
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+// ===== MongoDB Setup =====
+mongoose.connect(process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/firstsalary")
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch(err => console.error("❌ MongoDB Connection Error:", err.message));
 
-// Initialize plans file
-if (!fs.existsSync(PLANS_FILE)) {
-  fs.writeFileSync(PLANS_FILE, JSON.stringify({ plans: [], totalGenerated: 0 }));
-}
+const planSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: String,
+  ctc: Number,
+  inhand: Number,
+  needs: Number,
+  wants: Number,
+  savings: Number,
+  healthScore: Number,
+  createdAt: { type: Date, default: Date.now }
+});
+const Plan = mongoose.model("Plan", planSchema);
+
+// Keep track of total generated for quick stats
+let totalGeneratedCache = 0;
+Plan.countDocuments().then(count => totalGeneratedCache = count).catch(err => console.warn("⚠️ Could not load initial plan count (Database not connected)"));
+
+// ===== Nodemailer Setup =====
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
 // ===== Middleware =====
 app.use(cors());
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "50mb" })); // Increased for PDF Base64
 app.use(express.static(__dirname));
 
 // Request logging
@@ -35,19 +56,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-
-// ===== Helper: Read/Write plans =====
-function readPlans() {
-  try {
-    return JSON.parse(fs.readFileSync(PLANS_FILE, "utf-8"));
-  } catch {
-    return { plans: [], totalGenerated: 0 };
-  }
-}
-
-function writePlans(data) {
-  fs.writeFileSync(PLANS_FILE, JSON.stringify(data, null, 2));
-}
 
 // ===== API Routes =====
 
@@ -117,7 +125,7 @@ RULES:
 });
 
 // POST /api/save-plan — Save a user's financial plan
-app.post("/api/save-plan", (req, res) => {
+app.post("/api/save-plan", async (req, res) => {
   try {
     const { ctc, inhand, needs, wants, savings, name } = req.body;
 
@@ -125,8 +133,14 @@ app.post("/api/save-plan", (req, res) => {
       return res.status(400).json({ error: "Salary data is required" });
     }
 
-    const db = readPlans();
-    const plan = {
+    const healthScore = Math.min(
+      (savings >= 20 ? 30 : savings >= 10 ? 15 : 5) +
+      (needs <= 50 ? 25 : needs <= 60 ? 12 : 5) +
+      (wants <= 30 ? 20 : wants <= 40 ? 10 : 3) + 20,
+      100
+    );
+
+    const plan = new Plan({
       id: uuidv4().slice(0, 8),
       name: name || "Anonymous",
       ctc: ctc || 0,
@@ -134,24 +148,17 @@ app.post("/api/save-plan", (req, res) => {
       needs: needs || 50,
       wants: wants || 30,
       savings: savings || 20,
-      createdAt: new Date().toISOString(),
-      healthScore: Math.min(
-        (savings >= 20 ? 30 : savings >= 10 ? 15 : 5) +
-        (needs <= 50 ? 25 : needs <= 60 ? 12 : 5) +
-        (wants <= 30 ? 20 : wants <= 40 ? 10 : 3) + 20,
-        100
-      )
-    };
+      healthScore
+    });
 
-    db.plans.push(plan);
-    db.totalGenerated++;
-    writePlans(db);
+    await plan.save();
+    totalGeneratedCache++;
 
-    console.log(`✅ Plan saved: ${plan.id} (Total: ${db.totalGenerated})`);
+    console.log(`✅ Plan saved to MongoDB: ${plan.id} (Total: ${totalGeneratedCache})`);
 
     res.json({
       id: plan.id,
-      totalGenerated: db.totalGenerated,
+      totalGenerated: totalGeneratedCache,
       shareUrl: `/plan/${plan.id}`
     });
   } catch (err) {
@@ -161,10 +168,9 @@ app.post("/api/save-plan", (req, res) => {
 });
 
 // GET /api/plan/:id — Get a saved plan
-app.get("/api/plan/:id", (req, res) => {
+app.get("/api/plan/:id", async (req, res) => {
   try {
-    const db = readPlans();
-    const plan = db.plans.find(p => p.id === req.params.id);
+    const plan = await Plan.findOne({ id: req.params.id });
 
     if (!plan) {
       return res.status(404).json({ error: "Plan not found" });
@@ -177,26 +183,70 @@ app.get("/api/plan/:id", (req, res) => {
 });
 
 // GET /api/stats — Get app statistics
-app.get("/api/stats", (req, res) => {
+app.get("/api/stats", async (req, res) => {
   try {
-    const db = readPlans();
-
-    const avgSavings = db.plans.length > 0
-      ? Math.round(db.plans.reduce((s, p) => s + p.savings, 0) / db.plans.length)
-      : 20;
-
-    const avgHealth = db.plans.length > 0
-      ? Math.round(db.plans.reduce((s, p) => s + (p.healthScore || 0), 0) / db.plans.length)
-      : 0;
+    const activePlans = await Plan.countDocuments();
+    
+    // Aggregate averages
+    const result = await Plan.aggregate([
+      { 
+        $group: { 
+          _id: null, 
+          avgSavings: { $avg: "$savings" }, 
+          avgHealth: { $avg: "$healthScore" } 
+        } 
+      }
+    ]);
+    
+    const stats = result[0] || { avgSavings: 20, avgHealth: 0 };
 
     res.json({
-      totalPlans: db.totalGenerated,
-      activePlans: db.plans.length,
-      avgSavingsRate: avgSavings,
-      avgHealthScore: avgHealth
+      totalPlans: totalGeneratedCache,
+      activePlans,
+      avgSavingsRate: Math.round(stats.avgSavings),
+      avgHealthScore: Math.round(stats.avgHealth)
     });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /api/email-plan - Send the PDF via email
+app.post("/api/email-plan", async (req, res) => {
+  try {
+    const { email, pdfBase64 } = req.body;
+    
+    if (!email || !pdfBase64) {
+      return res.status(400).json({ error: "Email and PDF are required" });
+    }
+
+    // Remove the data URI prefix if present
+    const base64Data = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER || 'noreply@firstsalary.guide',
+      to: email,
+      subject: 'Your First Salary Plan 📄💰',
+      text: 'Congratulations on taking the first step towards financial confidence! Please find your personalized First Salary Plan attached.',
+      html: '<h3>Your Financial Plan is Here! 🎉</h3><p>Congratulations on taking the first step towards financial confidence. We have attached your personalized <b>First Salary Plan</b> as a PDF.</p><p>Keep tracking and stay disciplined!</p>',
+      attachments: [{
+        filename: 'My_First_Salary_Plan.pdf',
+        content: base64Data,
+        encoding: 'base64'
+      }]
+    };
+
+    // If no real email is configured in .env, just log it as a simulation for hackathon demo
+    if(!process.env.EMAIL_USER || process.env.EMAIL_USER.includes("your-email")) {
+      console.warn("⚠️ Email not configured in .env, simulating successful send for demo purposes.");
+      return res.json({ success: true, message: "Email simulation successful (Config missing)" });
+    }
+
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: "Email sent successfully!" });
+  } catch (err) {
+    console.error("Email error:", err);
+    res.status(500).json({ error: "Failed to send email" });
   }
 });
 
@@ -212,7 +262,8 @@ app.listen(PORT, () => {
   console.log("║   🚀 First Salary Guide Server Running      ║");
   console.log(`║   📍 http://localhost:${PORT}                   ║`);
   console.log("║   🤖 AI Chatbot: Gemini API Connected       ║");
-  console.log("║   💾 Data: ./data/plans.json                ║");
+  console.log("║   💾 Data: MongoDB Connected                ║");
+  console.log("║   ✉️  Email: Nodemailer Ready               ║");
   console.log("╚══════════════════════════════════════════════╝");
   console.log("");
 });
